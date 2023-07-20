@@ -7,6 +7,7 @@ import copy
 import cv2
 import torch
 import torch.backends.cudnn as cudnn
+import pandas as pd
 from numpy import random
 
 from models.experimental import attempt_load
@@ -18,10 +19,13 @@ from utils.torch_utils import select_device, load_classifier, time_synchronized
 
 
 def detect(opt):
-    source, weights, view_img, save_txt, imgsz, save_txt_tidl, kpt_label = opt.source, opt.weights, opt.view_img, opt.save_txt, opt.img_size, opt.save_txt_tidl, opt.kpt_label
+    source, weights, view_img, save_txt, imgsz, save_txt_tidl, kpt_label, save_kpts = opt.source, opt.weights, opt.view_img, opt.save_txt, opt.img_size, opt.save_txt_tidl, opt.kpt_label, opt.save_kpts
     save_img = not opt.nosave and not source.endswith('.txt')  # save inference images
     webcam = source.isnumeric() or source.endswith('.txt') or source.lower().startswith(
         ('rtsp://', 'rtmp://', 'http://', 'https://'))
+
+    if save_kpts:
+        kpts_list = []
 
     # Directories
     save_dir = increment_path(Path(opt.project) / opt.name, exist_ok=opt.exist_ok)  # increment run
@@ -120,7 +124,11 @@ def detect(opt):
                         plot_one_box(xyxy, im0, label=label, color=colors(c, True), line_thickness=opt.line_thickness, kpt_label=kpt_label, kpts=kpts, steps=3, orig_shape=im0.shape[:2])
                         if opt.save_crop:
                             save_one_box(xyxy, im0s, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
-
+                    
+                    if save_kpts:  # keypoints를 kpts_list에 저장
+                        kpts = det[det_index, 6:]
+                        kpts = kpts.tolist()
+                        kpts_list.append(kpts)
 
                 if save_txt_tidl:  # Write to file in tidl dump format
                     for *xyxy, conf, cls in det_tidl:
@@ -160,13 +168,18 @@ def detect(opt):
         s = f"\n{len(list(save_dir.glob('labels/*.txt')))} labels saved to {save_dir / 'labels'}" if save_txt or save_txt_tidl else ''
         print(f"Results saved to {save_dir}{s}")
 
+    if save_kpts:
+        time_series = pd.DataFrame(kpts_list)
+        time_series.to_csv(save_path.split('.')[0] + '.csv')
+        print(f"🤡 Keypoints 데이터 추출 완료")
+
     print(f'Done. ({time.time() - t0:.3f}s)')
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--weights', nargs='+', type=str, default='yolov5s.pt', help='model.pt path(s)')
-    parser.add_argument('--source', type=str, default='data/images', help='source')  # file/folder, 0 for webcam
+    parser.add_argument('--weights', nargs='+', type=str, default='yolov7-w6-pose.pt', help='model.pt path(s)')
+    parser.add_argument('--source', type=str, default='test.mp4', help='source')  # file/folder, 0 for webcam
     parser.add_argument('--img-size', nargs= '+', type=int, default=640, help='inference size (pixels)')
     parser.add_argument('--conf-thres', type=float, default=0.25, help='object confidence threshold')
     parser.add_argument('--iou-thres', type=float, default=0.45, help='IOU threshold for NMS')
@@ -182,13 +195,14 @@ if __name__ == '__main__':
     parser.add_argument('--agnostic-nms', action='store_true', help='class-agnostic NMS')
     parser.add_argument('--augment', action='store_true', help='augmented inference')
     parser.add_argument('--update', action='store_true', help='update all models')
-    parser.add_argument('--project', default='runs/detect', help='save results to project/name')
-    parser.add_argument('--name', default='exp', help='save results to project/name')
+    parser.add_argument('--project', default='output', help='save results to project/name')  # 결과 파일 저장 경로
+    parser.add_argument('--name', default='exp', help='save results to project/name')        # 결과 파일 저장 폴더명
     parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
     parser.add_argument('--line-thickness', default=3, type=int, help='bounding box thickness (pixels)')
     parser.add_argument('--hide-labels', default=False, action='store_true', help='hide labels')
     parser.add_argument('--hide-conf', default=False, action='store_true', help='hide confidences')
     parser.add_argument('--kpt-label', action='store_true', help='use keypoint labels')
+    parser.add_argument('--save-kpts', default=False, action='store_true', help='keypoints를 시계열 데이터로 저장')
     opt = parser.parse_args()
     print(opt)
     check_requirements(exclude=('tensorboard', 'pycocotools', 'thop'))
