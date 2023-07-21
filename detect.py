@@ -24,8 +24,24 @@ def detect(opt):
     webcam = source.isnumeric() or source.endswith('.txt') or source.lower().startswith(
         ('rtsp://', 'rtmp://', 'http://', 'https://'))
 
-    if save_kpts:
-        kpts_list = []
+    if save_kpts:  # keypoints 순서에 따른 label 값
+        labels = ['nose-x', 'nose-y', 'nose-conf',
+                  'left-eye-x', 'left-eye-y', 'left-eye-conf',
+                  'right-eye-x', 'right-eye-y', 'right-eye-conf',
+                  'left-ear-x', 'left-ear-y', 'left-ear-conf',
+                  'right-ear-x', 'right-ear-y', 'right-ear-conf',
+                  'left-shoulder-x', 'left-shoulder-y', 'left-shoulder-conf',
+                  'right-shoulder-x', 'right-shoulder-y', 'right-shoulder-conf',
+                  'left-elbow-x', 'left-elbow-y', 'left-elbow-conf',
+                  'right-elbow-x', 'right-elbow-y', 'right-elbow-conf',
+                  'left-hand-x', 'left-hand-y', 'left-hand-conf',
+                  'right-hand-x', 'right-hand-y', 'right-hand-conf',
+                  'left-hip-x', 'left-hip-y', 'left-hip-conf',
+                  'right-hip-x', 'right-hip-y', 'right-hip-conf',
+                  'left-knee-x', 'left-knee-y', 'left-knee-conf',
+                  'right-knee-x', 'right-knee-y', 'right-knee-conf',
+                  'left-foot-x', 'left-foot-y', 'left-foot-conf',
+                  'right-foot-x', 'right-foot-y', 'right-foot-conf']
 
     # Directories
     save_dir = increment_path(Path(opt.project) / opt.name, exist_ok=opt.exist_ok)  # increment run
@@ -67,8 +83,21 @@ def detect(opt):
     # Run inference
     if device.type != 'cpu':
         model(torch.zeros(1, 3, imgsz, imgsz).to(device).type_as(next(model.parameters())))  # run once
+    
     t0 = time.time()
+
+    pre_path = ''
+    p = None
+    kpts_df = pd.DataFrame(columns=labels)
+
     for path, img, im0s, vid_cap in dataset:
+        if pre_path != path:  # 파일이 넘어간 경우 csv 저장 및 df 리셋
+            pre_path = path
+            if isinstance(p, Path):
+                kpts_df.to_csv(f'{save_dir}/{p.name}.csv')
+                print(f"🤡 {p.name} 파일 keypoints 데이터 추출 완료!!!")
+                kpts_df = pd.DataFrame(columns=labels)
+                
         img = torch.from_numpy(img).to(device)
         img = img.half() if half else img.float()  # uint8 to fp16/32
         img /= 255.0  # 0 - 255 to 0.0 - 1.0
@@ -125,10 +154,11 @@ def detect(opt):
                         if opt.save_crop:
                             save_one_box(xyxy, im0s, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
                     
-                    if save_kpts:  # keypoints를 kpts_list에 저장
+                    if save_kpts:  # keypoints 데이터 저장
                         kpts = det[det_index, 6:]
-                        kpts = kpts.tolist()
-                        kpts_list.append(kpts)
+                        kpts = pd.DataFrame(kpts.tolist()).transpose()
+                        kpts.columns = labels
+                        kpts_df = pd.concat([kpts_df, kpts], ignore_index=True)
 
                 if save_txt_tidl:  # Write to file in tidl dump format
                     for *xyxy, conf, cls in det_tidl:
@@ -168,10 +198,9 @@ def detect(opt):
         s = f"\n{len(list(save_dir.glob('labels/*.txt')))} labels saved to {save_dir / 'labels'}" if save_txt or save_txt_tidl else ''
         print(f"Results saved to {save_dir}{s}")
 
-    if save_kpts:
-        time_series = pd.DataFrame(kpts_list)
-        time_series.to_csv(save_path.split('.')[0] + '.csv')
-        print(f"🤡 Keypoints 데이터 추출 완료")
+    if save_kpts:  # 마지막 파일 csv 저장
+        kpts_df.to_csv(f'{save_dir}/{p.name}.csv')
+        print(f"🤡 {p.name} 파일 keypoints 데이터 추출 완료!!!")
 
     print(f'Done. ({time.time() - t0:.3f}s)')
 
@@ -214,3 +243,4 @@ if __name__ == '__main__':
                 strip_optimizer(opt.weights)
         else:
             detect(opt=opt)
+            
