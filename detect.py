@@ -25,6 +25,8 @@ def detect(opt):
         ('rtsp://', 'rtmp://', 'http://', 'https://'))
 
     if save_kpts:  # keypoints 순서에 따른 label 값
+        pre_path = ''
+        p = None
         labels = ['nose-x', 'nose-y', 'nose-conf',
                   'left-eye-x', 'left-eye-y', 'left-eye-conf',
                   'right-eye-x', 'right-eye-y', 'right-eye-conf',
@@ -42,6 +44,7 @@ def detect(opt):
                   'right-knee-x', 'right-knee-y', 'right-knee-conf',
                   'left-foot-x', 'left-foot-y', 'left-foot-conf',
                   'right-foot-x', 'right-foot-y', 'right-foot-conf']
+        kpts_df = pd.DataFrame(columns=labels)
 
     # Directories
     save_dir = increment_path(Path(opt.project) / opt.name, exist_ok=opt.exist_ok)  # increment run
@@ -86,12 +89,8 @@ def detect(opt):
     
     t0 = time.time()
 
-    pre_path = ''
-    p = None
-    kpts_df = pd.DataFrame(columns=labels)
-
     for path, img, im0s, vid_cap in dataset:
-        if pre_path != path:  # 파일이 넘어간 경우 csv 저장 및 df 리셋
+        if save_kpts and pre_path != path:  # 파일이 넘어간 경우 csv 저장 및 df 리셋
             pre_path = path
             if isinstance(p, Path):
                 kpts_df.to_csv(f'{save_dir}/{p.name}.csv')
