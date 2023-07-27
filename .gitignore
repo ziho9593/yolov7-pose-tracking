@@ -35,7 +35,9 @@ data/images/*
 !data/images/bus.jpg
 !data/*.sh
 
-results*.csv
+.csv
+output/
+!img.png
 
 # Datasets -------------------------------------------------------------------------------------------------------------
 coco/
