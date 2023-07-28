@@ -190,9 +190,9 @@ def tracker():
                             if kpts == None:
                                 continue
                             if id in results.keys():
-                                results[id] += kpts
+                                results[id].append(kpts)
                             else:
-                                results[id] = kpts
+                                results[id] = [kpts]
                             im0[y1:y2, x1:x2] = obj
                     draw_boxes(im0, bbox_xyxy, identities, categories, names, save_with_object_id, txt_path)
            
