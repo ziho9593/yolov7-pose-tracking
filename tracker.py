@@ -14,43 +14,13 @@ from utils.datasets import LoadStreams, LoadImages
 from utils.general import check_img_size, check_imshow, non_max_suppression, apply_classifier, scale_coords, strip_optimizer, set_logging, increment_path
 from utils.torch_utils import select_device, load_classifier, time_synchronized, TracedModel
 from utils.download_weights import download
+from utils.plots import draw_boxes
 
 from pose.utils.datasets import LoadImages as PoseLoadImages
 from pose.models.experimental import attempt_load as pose_attempt_load
-from sort import *
 from pose.detect import detect
+from sort import *
 
-
-# Function to draw bounding boxes
-def draw_boxes(img, bbox, identities=None, categories=None, names=None, save_with_object_id=False, path=None, offset=(0, 0)):
-    for i, box in enumerate(bbox):
-        cat = int(categories[i]) if categories is not None else 0
-        if cat != 0:
-            continue
-        id = int(identities[i]) if identities is not None else 0
-        x1, y1, x2, y2 = [int(i) for i in box]
-        x1 += offset[0]
-        x2 += offset[0]
-        y1 += offset[1]
-        y2 += offset[1]
-        data = (int((box[0]+box[2])/2),(int((box[1]+box[3])/2)))
-        label = str(id) + ":"+ names[cat]
-        (w, h), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1)
-        cv2.rectangle(img, (x1, y1), (x2, y2), (255,0,20), 2)
-        cv2.rectangle(img, (x1, y1 - 20), (x1 + w, y1), (255,144,30), -1)
-        cv2.putText(img, label, (x1, y1 - 5),cv2.FONT_HERSHEY_SIMPLEX, 
-                    0.6, [255, 255, 255], 1)
-        # cv2.circle(img, data, 6, color,-1)   #centroid of box
-        txt_str = ""
-        if save_with_object_id:
-            txt_str += "%i %i %f %f %f %f %f %f" % (
-                id, cat, int(box[0])/img.shape[1], int(box[1])/img.shape[0] , int(box[2])/img.shape[1], int(box[3])/img.shape[0] ,int(box[0] + (box[2] * 0.5))/img.shape[1] ,
-                int(box[1] + (
-                    box[3]* 0.5))/img.shape[0])
-            txt_str += "\n"
-            with open(path + '.txt', 'a') as f:
-                f.write(txt_str)
-    return img
 
 
 def tracker():
@@ -204,6 +174,7 @@ def tracker():
                     bbox_xyxy = tracked_dets[:,:4]
                     identities = tracked_dets[:, -1]
                     categories = tracked_dets[:, 4]
+
                     if save_kpts:
                         for idx, box in enumerate(bbox_xyxy):
                             cat = int(categories[idx]) if categories is not None else 0
@@ -215,14 +186,16 @@ def tracker():
                             if not obj.shape[0] or not obj.shape[1]:
                                 continue
                             d = PoseLoadImages(obj, img_size=imgsz_, stride=stride_)
-                            kpts = detect(d, model=model_, device=device, half=half)
+                            kpts, obj = detect(d, model=model_, device=device, half=half, xy=[x1, y1])
                             if kpts == None:
                                 continue
                             if id in results.keys():
                                 results[id] += kpts
                             else:
                                 results[id] = kpts
+                            im0[y1:y2, x1:x2] = obj
                     draw_boxes(im0, bbox_xyxy, identities, categories, names, save_with_object_id, txt_path)
+           
             else:  # SORT should be updated even with no detections
                 tracked_dets = sort_tracker.update()
 
@@ -275,6 +248,7 @@ def tracker():
         print(f'frame/time: {nf/(t4-t0)}')
 
     print('============= 종 료 =============')
+
 
 
 if __name__ == '__main__':
