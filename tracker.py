@@ -5,7 +5,6 @@ import cv2
 import torch
 import argparse
 from pathlib import Path
-from numpy import random
 from random import randint
 import torch.backends.cudnn as cudnn
 
@@ -24,7 +23,7 @@ from sort import *
 
 
 def tracker():
-    source, weights, view_img, save_txt, imgsz, trace, save_bbox_dim, save_with_object_id, save_kpts = opt.source, opt.weights, opt.view_img, opt.save_txt, opt.img_size, not opt.no_trace, opt.save_bbox_dim, opt.save_with_object_id, opt.save_kpts
+    source, weights, view_img, save_txt, imgsz, trace, save_with_object_id, save_kpts = opt.source, opt.weights, opt.view_img, opt.save_txt, opt.img_size, not opt.no_trace, opt.save_with_object_id, opt.save_kpts
     save_img = not opt.nosave and not source.endswith('.txt')  # Save inference images
     webcam = source.isnumeric() or source.endswith('.txt') or source.lower().startswith(('rtsp://', 'rtmp://', 'http://', 'https://'))
     
@@ -97,7 +96,6 @@ def tracker():
 
     # Get names and colors
     names = model.module.names if hasattr(model, 'module') else model.names
-    colors = [[random.randint(0, 255) for _ in range(3)] for _ in names]
 
     # Run inference
     if device.type != 'cpu':
@@ -162,7 +160,6 @@ def tracker():
                 
                 # Run SORT
                 tracked_dets = sort_tracker.update(dets_to_sort)
-                tracks =sort_tracker.getTrackers()
 
                 txt_str = ""
 
@@ -273,7 +270,6 @@ if __name__ == '__main__':
     parser.add_argument('--name', default='obj', help='save results to project/name')
     parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
     parser.add_argument('--no-trace', action='store_true', help='don`t trace model')
-    parser.add_argument('--save-bbox-dim', action='store_true', help='save bounding box dimensions with --save-txt tracks')
     parser.add_argument('--save-with-object-id', action='store_true', help='save results with object id to *.txt')
     parser.add_argument('--save-kpts', action='store_true', help='save keypoints data with object id to *.json')
     parser.set_defaults(download=True)
