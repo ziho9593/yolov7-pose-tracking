@@ -21,6 +21,7 @@ thop = "*"
 pycocotools = ">=2.0"
 filterpy = "*"
 scikit-image = "*"
+pafy = "*"
 
 [dev-packages]
 ipykernel = "*"
