@@ -41,7 +41,7 @@ python tracker.py --source "your IP Camera Stream URL" --device 0
 
 
 ### 결과 예시
-<p><img src='./docs/src/ohtani.gif' height=400></p>
+<img src='./docs/src/ohtani.gif' alt="" height=400 loop="true">
 
 
 ### 참고자료
